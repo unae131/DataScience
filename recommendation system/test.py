@@ -1,4 +1,5 @@
 import numpy as np
+import os
 
 def test(directory = "", num = 5):
     diffSum = 0
@@ -26,4 +27,13 @@ def test(directory = "", num = 5):
 
     return rmse
 
-print(test(directory="data-2/"))
+if __name__ == "__main__":
+    testcases = 5
+    directory="data-2/"
+    
+    cmds = ""
+    for i in range(1, testcases + 1):
+        cmds += "python3 recommender.py " + directory + "u" + str(i) + ".base " + directory + "u" + str(i) + ".test\n"
+
+    os.system(cmds)
+    print("전체 rmse", test(directory="data-2/", num= testcases))

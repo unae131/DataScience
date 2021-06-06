@@ -6,7 +6,6 @@ Recommendation system using CF(Collaborative Filtering) approach
 import sys
 import time
 import numpy as np
-from numpy.core.arrayprint import IntegerFormat
 
 def fillRatingMatrix(ratingMatrix, binaryMatrix, theta = 0.5):
     for i in range(len(ratingMatrix)):
@@ -124,4 +123,4 @@ if __name__ == "__main__":
     resultFileName = writeOutputFile(sys.argv[2], ratingMatrix, userIDs, itemIDs)
 
     finishTime = time.time()
-    print(finishTime - startTime, " 초 경과")
+    print(sys.argv[1], finishTime - startTime, "초")
