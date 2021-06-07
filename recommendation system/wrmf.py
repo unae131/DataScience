@@ -1,7 +1,7 @@
 import numpy as np
 
 class WRMF():
-    def als(binaryMatrix, r_lambda = 10, nFactor = 100, alpha = 40, epoch = 10, verbose = 0):
+    def als(binaryMatrix, r_lambda = 20, nFactor = 100, alpha = 40, epoch = 10, verbose = 0):
         nUsers = len(binaryMatrix)
         nItems = len(binaryMatrix[0])
 
