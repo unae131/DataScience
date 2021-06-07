@@ -1,3 +1,4 @@
 
 *.ini
 recommendation system/test/Icon
+*.pyc

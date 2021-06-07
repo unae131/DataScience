@@ -7,14 +7,50 @@ import sys
 import time
 import numpy as np
 
+def loss(binaryMatrix, U, V, C, r_lambda):
+    return np.sum(C * (binaryMatrix - (U @ V.T) ** 2)) + r_lambda * (np.sum(U*U) + np.sum(V*V)) 
+
+def update(binaryMatrix, nUsers, nItems, nFactor, U, V, C, r_lambda):
+    lambdaI = r_lambda * np.eye(nFactor)
+
+    for u in range(nUsers):
+        Cu = np.diag(C[u])
+        U[u] = np.linalg.inv(V.T @ Cu @ V + lambdaI) @ V.T @ Cu @ binaryMatrix[u]
+
+    for i in range(nItems):
+        Ci = np.diag(C[:, i])
+        V[i] = np.linalg.inv(U.T @ Ci @ U + lambdaI) @ U.T @ Ci @ binaryMatrix[:, i]
+
+    return U, V
+
+def als(binaryMatrix, r_lambda = 150, nFactor = 100, alpha = 40, epoch = 10):
+    nUsers = len(binaryMatrix)
+    nItems = len(binaryMatrix[0])
+
+    # initialize U and V
+    U = np.random.rand(nUsers, nFactor) * 0.16
+    V = np.random.rand(nItems, nFactor) * 0.16
+    C = 1 + alpha * binaryMatrix
+
+    # loss
+    for k in range(epoch):
+        print(loss(binaryMatrix, U, V, C, r_lambda))
+        U, V = update(binaryMatrix, nUsers, nItems, nFactor, U, V, C, r_lambda)
+
+    return U @ V.T
+
 def fillRatingMatrix(ratingMatrix, binaryMatrix, theta = 0.5):
-    for i in range(len(ratingMatrix)):
-        for j in range(len(ratingMatrix[0])):
+    nUsers = len(ratingMatrix)
+    nItems = len(ratingMatrix[0])
+
+    for i in range(nUsers):
+        for j in range(nItems):
             if ratingMatrix[i][j] != 0:
                 continue
-
+            
             if binaryMatrix[i][j] > theta:
                 ratingMatrix[i][j] = 3
+
             else:
                 ratingMatrix[i][j] = 2
 
@@ -110,17 +146,18 @@ if __name__ == "__main__":
     if len(sys.argv) < 3:
         print("Insufficient arguments!")
         print("\"recommender.py [train data file name] [test data file name]\"")
+    
+    else:
+        startTime = time.time()
 
-    startTime = time.time()
+        dataset = readInputFile(sys.argv[1], sys.argv[2])
+        # print(dataset)
 
-    dataset = readInputFile(sys.argv[1], sys.argv[2])
-    # print(dataset)
+        userIDs, itemIDs, ratingMatrix, binaryMatrix = getRatingMatrix(dataset)
+        # binaryMatrix = inferPreUsePrefer(binaryMatrix)
+        binaryMatrix = als(binaryMatrix)
+        ratingMatrix = fillRatingMatrix(ratingMatrix, binaryMatrix)
+        writeOutputFile(sys.argv[2], ratingMatrix, userIDs, itemIDs)
 
-    userIDs, itemIDs, ratingMatrix, binaryMatrix = getRatingMatrix(dataset)
-    inferedBinaryMatrix = inferPreUsePrefer(binaryMatrix)
-    ratingMatrix = fillRatingMatrix(ratingMatrix, binaryMatrix)
-
-    resultFileName = writeOutputFile(sys.argv[2], ratingMatrix, userIDs, itemIDs)
-
-    finishTime = time.time()
-    print(sys.argv[1], finishTime - startTime, "초")
+        finishTime = time.time()
+        print(sys.argv[1], finishTime - startTime, "초")
