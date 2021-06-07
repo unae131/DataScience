@@ -6,49 +6,29 @@ Recommendation system using CF(Collaborative Filtering) approach
 import sys
 import time
 import numpy as np
+from wrmf import *
 
-def loss(binaryMatrix, U, V, C, r_lambda):
-    return np.sum(C * (binaryMatrix - (U @ V.T) ** 2)) + r_lambda * (np.sum(U*U) + np.sum(V*V)) 
-
-def update(binaryMatrix, nUsers, nItems, nFactor, U, V, C, r_lambda):
-    lambdaI = r_lambda * np.eye(nFactor)
-
-    for u in range(nUsers):
-        Cu = np.diag(C[u])
-        U[u] = np.linalg.inv(V.T @ Cu @ V + lambdaI) @ V.T @ Cu @ binaryMatrix[u]
-
-    for i in range(nItems):
-        Ci = np.diag(C[:, i])
-        V[i] = np.linalg.inv(U.T @ Ci @ U + lambdaI) @ U.T @ Ci @ binaryMatrix[:, i]
-
-    return U, V
-
-def als(binaryMatrix, r_lambda = 150, nFactor = 100, alpha = 40, epoch = 10):
-    nUsers = len(binaryMatrix)
-    nItems = len(binaryMatrix[0])
-
-    # initialize U and V
-    U = np.random.rand(nUsers, nFactor) * 0.16
-    V = np.random.rand(nItems, nFactor) * 0.16
-    C = 1 + alpha * binaryMatrix
-
-    # loss
-    for k in range(epoch):
-        print(loss(binaryMatrix, U, V, C, r_lambda))
-        U, V = update(binaryMatrix, nUsers, nItems, nFactor, U, V, C, r_lambda)
-
-    return U @ V.T
-
-def fillRatingMatrix(ratingMatrix, binaryMatrix, theta = 0.5):
+def fillRatingMatrix(ratingMatrix, binaryMatrix, theta = 0.9):
     nUsers = len(ratingMatrix)
     nItems = len(ratingMatrix[0])
+
+    interest = []
+    for i in range(nUsers):
+        for j in range(nItems):
+            if ratingMatrix[i][j] != 0:
+                continue
+            
+            interest.append(binaryMatrix[i][j])
+
+    interest.sort()
+    maxUninterest = interest[int(theta * len(interest))]
 
     for i in range(nUsers):
         for j in range(nItems):
             if ratingMatrix[i][j] != 0:
                 continue
             
-            if binaryMatrix[i][j] > theta:
+            if binaryMatrix[i][j] > maxUninterest:
                 ratingMatrix[i][j] = 3
 
             else:
@@ -132,7 +112,7 @@ def writeOutputFile(testFileName, ratingMatrix, userIDs, itemIDs):
     result = ""
 
     for line in lines: # user id | item id | rating | timestamp
-        user, item, _, __ = list(map(int, line.split()))
+        user, item, __, __ = list(map(int, line.split()))
 
         result += str(user) + "\t" + str(item) + "\t" + str(ratingMatrix[userIDs[user]][itemIDs[item]]) + "\n"
 
@@ -141,6 +121,24 @@ def writeOutputFile(testFileName, ratingMatrix, userIDs, itemIDs):
         f.write(result)
     
     return resultFileName
+
+def testRMSE(testFile):
+    with open(testFile, 'r') as f:
+        lines1 = f.readlines()
+
+    resultFile = testFile.split(".")[0] + ".base_prediction.txt"
+    with open(resultFile, 'r') as f:
+        lines2 = f.readlines()
+
+    diffSum = 0
+    for i in range(len(lines1)): # user id | item id | rating | timestamp
+        __, __, answer, __ = list(map(int, lines1[i].split()))
+        __, __, predict = list(map(int, lines2[i].split()))
+
+        diffSum += (answer - predict) ** 2
+
+    rmse = np.sqrt(diffSum / len(lines1))
+    return rmse
 
 if __name__ == "__main__":
     if len(sys.argv) < 3:
@@ -154,10 +152,18 @@ if __name__ == "__main__":
         # print(dataset)
 
         userIDs, itemIDs, ratingMatrix, binaryMatrix = getRatingMatrix(dataset)
-        # binaryMatrix = inferPreUsePrefer(binaryMatrix)
-        binaryMatrix = als(binaryMatrix)
+        binaryMatrix = inferPreUsePrefer(binaryMatrix)
+        binaryMatrix, loss, U, V = WRMF.als(binaryMatrix)
+        # np.save(sys.argv[1].split()[0] + "_U", U)
+        # np.save(sys.argv[1].split()[0] + "_V", V)
+
+        # U = np.load(sys.argv[1].split()[0] + "_U.npy")
+        # V = np.load(sys.argv[1].split()[0] + "_V.npy")
+        # binaryMatrix = U @ V.T
+        
         ratingMatrix = fillRatingMatrix(ratingMatrix, binaryMatrix)
         writeOutputFile(sys.argv[2], ratingMatrix, userIDs, itemIDs)
-
+        
         finishTime = time.time()
         print(sys.argv[1], finishTime - startTime, "초")
+        print(testRMSE(sys.argv[2]))
