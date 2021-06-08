@@ -11,6 +11,7 @@ from wrmf import *
 def fillRatingMatrix(ratingMatrix, binaryMatrix, theta = 0.000001):
     nUsers = len(ratingMatrix)
     nItems = len(ratingMatrix[0])
+    ratingMatrix = np.array(ratingMatrix)
 
     interest = []
     for i in range(nUsers):
@@ -30,15 +31,15 @@ def fillRatingMatrix(ratingMatrix, binaryMatrix, theta = 0.000001):
             if ratingMatrix[i][j] != 0:
                 continue
             
-            if binaryMatrix[i][j] > minInterest:
-                ratingMatrix[i][j] = 4
+            # if binaryMatrix[i][j] > minInterest:
+            #     ratingMatrix[i][j] = 4
             
-            elif binaryMatrix[i][j] > maxUninterest:
-                ratingMatrix[i][j] = 3
+            # elif binaryMatrix[i][j] > maxUninterest:
+            ratingMatrix[i][j] = 3
 
             # elif binaryMatrix[i][j] > midUninterest:
-            else:
-                ratingMatrix[i][j] = 2
+            # else:
+            #     ratingMatrix[i][j] = 2
             
             # else:
             #     ratingMatrix[i][j] = 1
@@ -50,6 +51,20 @@ def inferPreUsePrefer(binaryMatrix): # svd
     us = np.matmul(u, np.diag(s))
     inferedBinaryMatrix = np.matmul(us, vh)
     return inferedBinaryMatrix
+
+def afterCF(originRM, newRM):
+    for i in range(len(originRM)):
+        for j in range(len(originRM[0])):
+            if originRM[i][j] != 0:
+                continue
+
+            if newRM[i][j] < 1:
+                originRM[i][j] = 1
+            elif newRM[i][j] > 5:
+                originRM[i][j] = 5
+            else:
+                originRM[i][j] = round(newRM[i][j])
+    return originRM
 
 def getRatingMatrix(dataset):
     users = list(dataset.keys())
@@ -165,6 +180,9 @@ if __name__ == "__main__":
         # binaryMatrix = U @ V.T
         
         ratingMatrix = fillRatingMatrix(ratingMatrix, binaryMatrix)
+        cf = inferPreUsePrefer(ratingMatrix)
+        ratingMatrix = afterCF(ratingMatrix, cf)
+
         writeOutputFile(sys.argv[2], ratingMatrix, userIDs, itemIDs)
         
         finishTime = time.time()
