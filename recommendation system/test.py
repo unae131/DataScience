@@ -26,6 +26,7 @@ def test(testcases, directory = ""):
         totalNum += len(lines1)
 
     rmse = np.sqrt(diffSum /totalNum)
+    # rmse = diffSum
 
     return rmse
 
@@ -37,6 +38,6 @@ if __name__ == "__main__":
     for i in testcases:
         cmds += "python3 recommender.py " + directory + "u" + str(i) + ".base " + directory + "u" + str(i) + ".test\n"
 
-    testcases = [1,2,3,4,5]
+    # testcases = [1]
     os.system(cmds)
     print("전체 rmse", test(testcases, directory="data-2/"))

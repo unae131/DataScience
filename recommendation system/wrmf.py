@@ -1,7 +1,7 @@
 import numpy as np
 
 class WRMF():
-    def als(binaryMatrix, r_lambda = 20, nFactor = 100, alpha = 40, epoch = 10, verbose = 0):
+    def als(binaryMatrix, r_lambda = 20, nFactor = 100, alpha = 40, epoch = 10, verbose = 1):
         nUsers = len(binaryMatrix)
         nItems = len(binaryMatrix[0])
 
@@ -13,7 +13,7 @@ class WRMF():
         # loss
         for k in range(epoch):
             if verbose > 0:
-                print(WRMF.__loss(binaryMatrix, U, V, C, r_lambda))
+                print("(" + str(k+1) +"/"+str(epoch) + ")", "loss:", WRMF.__loss(binaryMatrix, U, V, C, r_lambda))
 
             U, V = WRMF.__update(binaryMatrix, nUsers, nItems, nFactor, U, V, C, r_lambda)
         

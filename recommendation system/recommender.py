@@ -8,7 +8,7 @@ import time
 import numpy as np
 from wrmf import *
 
-def fillRatingMatrix(ratingMatrix, binaryMatrix, theta = 0.9):
+def fillRatingMatrix(ratingMatrix, binaryMatrix, theta = 0.000001):
     nUsers = len(ratingMatrix)
     nItems = len(ratingMatrix[0])
 
@@ -21,18 +21,27 @@ def fillRatingMatrix(ratingMatrix, binaryMatrix, theta = 0.9):
             interest.append(binaryMatrix[i][j])
 
     interest.sort()
+    minInterest = interest[int(0.999999  * len(interest))]
     maxUninterest = interest[int(theta * len(interest))]
-
+    midUninterest = interest[int(0.000001 * len(interest))]
+    
     for i in range(nUsers):
         for j in range(nItems):
             if ratingMatrix[i][j] != 0:
                 continue
             
-            if binaryMatrix[i][j] > maxUninterest:
+            if binaryMatrix[i][j] > minInterest:
+                ratingMatrix[i][j] = 4
+            
+            elif binaryMatrix[i][j] > maxUninterest:
                 ratingMatrix[i][j] = 3
 
+            # elif binaryMatrix[i][j] > midUninterest:
             else:
                 ratingMatrix[i][j] = 2
+            
+            # else:
+            #     ratingMatrix[i][j] = 1
 
     return ratingMatrix
 
@@ -70,38 +79,26 @@ def getRatingMatrix(dataset):
         j = 0
         for item in items:
             if item in dataset[user]:
-                ratingMatrix[i][j] = dataset[user][item][0]
+                ratingMatrix[i][j] = dataset[user][item]
                 binaryMatrix[i][j] = 1.
             j += 1
         i += 1
 
     return userIDs, itemIDs, ratingMatrix, binaryMatrix
 
-def readInputFile(trainFile, testFile):
+def readInputFile(trainFile):
     with open(trainFile, 'r') as f:
         lines = f.readlines()
 
     dataset = dict()
     
     for line in lines: # user id | item id | rating | timestamp
-        user, item, rating, timestamp = list(map(int, line.split()))
+        user, item, rating, _ = list(map(int, line.split()))
 
         if user not in dataset:
             dataset[user] = dict()
 
-        dataset[user][item] = [rating, timestamp]
-
-    # test file
-    with open(testFile, 'r') as f:
-        lines = f.readlines()
-
-    for line in lines: # user id | item id | rating | timestamp
-        user, item, _, __ = list(map(int, line.split()))
-
-        if user not in dataset:
-            dataset[user] = dict()
-
-        dataset[user][item] = [0, 0]
+        dataset[user][item] = rating
 
     return dataset
 
@@ -114,7 +111,12 @@ def writeOutputFile(testFileName, ratingMatrix, userIDs, itemIDs):
     for line in lines: # user id | item id | rating | timestamp
         user, item, __, __ = list(map(int, line.split()))
 
-        result += str(user) + "\t" + str(item) + "\t" + str(ratingMatrix[userIDs[user]][itemIDs[item]]) + "\n"
+        try:
+            rating = ratingMatrix[userIDs[user]][itemIDs[item]]
+        except KeyError:
+            rating = 3
+
+        result += str(user) + "\t" + str(item) + "\t" + str(rating) + "\n"
 
     resultFileName = testFileName.split(".")[0]+".base_prediction.txt"
     with open(resultFileName, 'w') as f:
@@ -138,6 +140,7 @@ def testRMSE(testFile):
         diffSum += (answer - predict) ** 2
 
     rmse = np.sqrt(diffSum / len(lines1))
+    print("diffSum", diffSum)
     return rmse
 
 if __name__ == "__main__":
@@ -148,12 +151,12 @@ if __name__ == "__main__":
     else:
         startTime = time.time()
 
-        dataset = readInputFile(sys.argv[1], sys.argv[2])
+        dataset = readInputFile(sys.argv[1])
         # print(dataset)
 
         userIDs, itemIDs, ratingMatrix, binaryMatrix = getRatingMatrix(dataset)
         binaryMatrix = inferPreUsePrefer(binaryMatrix)
-        binaryMatrix, loss, U, V = WRMF.als(binaryMatrix)
+        # binaryMatrix, loss, U, V = WRMF.als(binaryMatrix)
         # np.save(sys.argv[1].split()[0] + "_U", U)
         # np.save(sys.argv[1].split()[0] + "_V", V)
 
@@ -166,4 +169,4 @@ if __name__ == "__main__":
         
         finishTime = time.time()
         print(sys.argv[1], finishTime - startTime, "초")
-        print(testRMSE(sys.argv[2]))
+        print("rmse", testRMSE(sys.argv[2]))
