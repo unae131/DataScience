@@ -44,7 +44,7 @@ def inferPreUsePrefer(binaryMatrix): # svd
     inferedBinaryMatrix = np.matmul(us, vh)
     return inferedBinaryMatrix
 
-def getRatingMatrix(dataset):
+def _getRatingMatrix(dataset):
     users = list(dataset.keys())
     users.sort()
     userIDs = dict()
@@ -93,7 +93,7 @@ def readInputFile(trainFile):
 
         dataset[user][item] = rating
 
-    return dataset
+    return _getRatingMatrix(dataset)
 
 def writeOutputFile(testFileName, ratingMatrix, userIDs, itemIDs):
     with open(testFileName, 'r') as f:
@@ -133,7 +133,6 @@ def testRMSE(testFile):
         diffSum += (answer - predict) ** 2
 
     rmse = np.sqrt(diffSum / len(lines1))
-    print("diffSum", diffSum)
     return rmse
 
 if __name__ == "__main__":
@@ -144,10 +143,7 @@ if __name__ == "__main__":
     else:
         startTime = time.time()
 
-        dataset = readInputFile(sys.argv[1])
-        # print(dataset)
-
-        userIDs, itemIDs, ratingMatrix, binaryMatrix = getRatingMatrix(dataset)
+        userIDs, itemIDs, ratingMatrix, binaryMatrix = readInputFile(sys.argv[1])
         binaryMatrix = inferPreUsePrefer(ratingMatrix)
         ratingMatrix = fillRatingMatrix(ratingMatrix, binaryMatrix)
 
