@@ -8,7 +8,7 @@ import time
 import numpy as np
 from wrmf import *
 
-def fillRatingMatrix(ratingMatrix, binaryMatrix, theta = 0.000001):
+def fillRatingMatrix(ratingMatrix, binaryMatrix, theta = 0.5):
     nUsers = len(ratingMatrix)
     nItems = len(ratingMatrix[0])
     ratingMatrix = np.array(ratingMatrix)
@@ -22,28 +22,20 @@ def fillRatingMatrix(ratingMatrix, binaryMatrix, theta = 0.000001):
             interest.append(binaryMatrix[i][j])
 
     interest.sort()
-    minInterest = interest[int(0.999999  * len(interest))]
+
     maxUninterest = interest[int(theta * len(interest))]
-    midUninterest = interest[int(0.000001 * len(interest))]
     
     for i in range(nUsers):
         for j in range(nItems):
             if ratingMatrix[i][j] != 0:
                 continue
-            
-            # if binaryMatrix[i][j] > minInterest:
-            #     ratingMatrix[i][j] = 4
-            
-            # elif binaryMatrix[i][j] > maxUninterest:
-            ratingMatrix[i][j] = 3
+        
+            if binaryMatrix[i][j] > maxUninterest:
+                ratingMatrix[i][j] = 3
 
-            # elif binaryMatrix[i][j] > midUninterest:
-            # else:
-            #     ratingMatrix[i][j] = 2
+            else:
+                ratingMatrix[i][j] = 2
             
-            # else:
-            #     ratingMatrix[i][j] = 1
-
     return ratingMatrix
 
 def inferPreUsePrefer(binaryMatrix): # svd
@@ -51,20 +43,6 @@ def inferPreUsePrefer(binaryMatrix): # svd
     us = np.matmul(u, np.diag(s))
     inferedBinaryMatrix = np.matmul(us, vh)
     return inferedBinaryMatrix
-
-def afterCF(originRM, newRM):
-    for i in range(len(originRM)):
-        for j in range(len(originRM[0])):
-            if originRM[i][j] != 0:
-                continue
-
-            if newRM[i][j] < 1:
-                originRM[i][j] = 1
-            elif newRM[i][j] > 5:
-                originRM[i][j] = 5
-            else:
-                originRM[i][j] = round(newRM[i][j])
-    return originRM
 
 def getRatingMatrix(dataset):
     users = list(dataset.keys())
@@ -170,18 +148,8 @@ if __name__ == "__main__":
         # print(dataset)
 
         userIDs, itemIDs, ratingMatrix, binaryMatrix = getRatingMatrix(dataset)
-        binaryMatrix = inferPreUsePrefer(binaryMatrix)
-        # binaryMatrix, loss, U, V = WRMF.als(binaryMatrix)
-        # np.save(sys.argv[1].split()[0] + "_U", U)
-        # np.save(sys.argv[1].split()[0] + "_V", V)
-
-        # U = np.load(sys.argv[1].split()[0] + "_U.npy")
-        # V = np.load(sys.argv[1].split()[0] + "_V.npy")
-        # binaryMatrix = U @ V.T
-        
+        binaryMatrix = inferPreUsePrefer(ratingMatrix)
         ratingMatrix = fillRatingMatrix(ratingMatrix, binaryMatrix)
-        cf = inferPreUsePrefer(ratingMatrix)
-        ratingMatrix = afterCF(ratingMatrix, cf)
 
         writeOutputFile(sys.argv[2], ratingMatrix, userIDs, itemIDs)
         
