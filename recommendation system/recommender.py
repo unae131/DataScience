@@ -1,26 +1,75 @@
 """
-Date : 2021.06.06
-GitName : unae131
+Name : 윤혜원
 Recommendation system using CF(Collaborative Filtering) approach
 """
 import sys
 import time
 import numpy as np
-from wrmf import *
 
-def fillRatingMatrix(ratingMatrix):
+def getMean(ratings):
+    count = 0
+    for i in range(len(ratings)):
+
+        if ratings[i] == 0:
+            continue
+
+        count += 1
+
+    mean = np.sum(ratings) / count
+    return mean
+
+def aggregateRatings(ratingMatrix, K):
     nUsers = len(ratingMatrix)
     nItems = len(ratingMatrix[0])
-    ratingMatrix = np.array(ratingMatrix)
+    userMeans = []
+    similarities = dict()
+    w = []
 
+    for i in range(nUsers):
+        userMeans.append(getMean(ratingMatrix[i]))
+        similarities[i] = dict()
+        w.append(ratingMatrix[i] / np.sqrt(np.sum(ratingMatrix[i] * ratingMatrix[i])))
+
+    # get cosine similarity
+    for i in range(1, nUsers):
+        for j in range(i, nUsers):
+            similarities[i][j] = np.sum(w[i]*w[j])
+            similarities[j][i] = similarities[i][j]
+
+    # find k neighbors
+    neighbors = []    
+    for i in range(nUsers):
+        neighbors.append(dict(sorted(similarities[i].items(), reverse=True, key = lambda item : item[1])))
+
+    # aggregate
     for i in range(nUsers):
         for j in range(nItems):
             if ratingMatrix[i][j] != 0:
                 continue
-        
-            ratingMatrix[i][j] = 3
+
+            k = 0
+            wSum = 0
+            for userIdx in neighbors[i]:
+                if k >= K:
+                    break
+
+                if i == userIdx or ratingMatrix[userIdx][j] == 0:
+                    continue
+
+                wSum += neighbors[i][userIdx] * (ratingMatrix[userIdx][j] - userMeans[userIdx])
+                k+=1
+
+            predicted = round(userMeans[i] + 1.957 / (K) * wSum)
             
-    return ratingMatrix
+            if predicted < 1:
+                predicted = 1
+
+            elif predicted > 5:
+                predicted = 5
+
+            ratingMatrix[i][j] = predicted
+
+    return ratingMatrix, userMeans
 
 def _getRatingMatrix(dataset):
     users = list(dataset.keys())
@@ -44,6 +93,7 @@ def _getRatingMatrix(dataset):
         i+=1
 
     ratingMatrix = np.full((len(users), len(items)), 0, dtype = np.uint8)
+
     i = 0
     for user in users:
         j = 0
@@ -71,7 +121,7 @@ def readInputFile(trainFile):
 
     return _getRatingMatrix(dataset)
 
-def writeOutputFile(testFileName, ratingMatrix, userIDs, itemIDs, default):
+def writeOutputFile(testFileName, ratingMatrix, userIDs, itemIDs, userMeans, itemMeans):
     with open(testFileName, 'r') as f:
         lines = f.readlines()
 
@@ -80,10 +130,14 @@ def writeOutputFile(testFileName, ratingMatrix, userIDs, itemIDs, default):
     for line in lines: # user id | item id | rating | timestamp
         user, item, __, __ = list(map(int, line.split()))
 
-        try:
+        if user not in userIDs and item not in itemIDs:
+            rating = round(np.sum(userMeans) / len(userMeans))
+        elif user not in userIDs:
+            rating = round(itemMeans[itemIDs[item]])
+        elif item not in itemIDs:
+            rating = round(userMeans[userIDs[user]])
+        else:
             rating = ratingMatrix[userIDs[user]][itemIDs[item]]
-        except KeyError:
-            rating = round(default)
 
         result += str(user) + "\t" + str(item) + "\t" + str(rating) + "\n"
 
@@ -100,10 +154,13 @@ if __name__ == "__main__":
         startTime = time.time()
 
         userIDs, itemIDs, ratingMatrix = readInputFile(sys.argv[1])
-        ratingMatrix = fillRatingMatrix(ratingMatrix)
+        ratingMatrix, userMeans = aggregateRatings(ratingMatrix, 10)
 
-        mean = np.sum(ratingMatrix) / (len(userIDs) * len(itemIDs))
-        writeOutputFile(sys.argv[2], ratingMatrix, userIDs, itemIDs, mean)
+        itemMeans = []
+        for i in range(len(itemIDs)):
+            itemMeans.append(ratingMatrix[:,i])
+
+        writeOutputFile(sys.argv[2], ratingMatrix, userIDs, itemIDs, userMeans, itemMeans)
         
         finishTime = time.time()
         print(sys.argv[1], finishTime - startTime, "초")

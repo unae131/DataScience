@@ -17,10 +17,14 @@ def test(testcases, directory = ""):
 
         tmp = diffSum
         for i in range(len(lines1)): # user id | item id | rating | timestamp
-            _, __, answer, ___ = list(map(int, lines1[i].split()))
-            _, __, predict = list(map(int, lines2[i].split()))
+            user, item, answer, ___ = list(map(int, lines1[i].split()))
+            ___, ___, predict = list(map(int, lines2[i].split()))
 
             diffSum += (answer - predict) ** 2
+
+            # if answer != predict:
+            #     print("user:",user,"item:",item,answer, predict)
+
         print("#", u, " rmse:", np.sqrt((diffSum - tmp)/len(lines1)))
 
         totalNum += len(lines1)
